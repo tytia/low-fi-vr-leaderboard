@@ -1,0 +1,303 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Low-Fi VR Leaderboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+:root {
+	--bg: #f4f2fb;
+	--panel: #ffffff;
+	--text: #1d1a2b;
+	--muted: #6b6680;
+	--line: #e3dff0;
+	--accent: #6d4aff;
+	--accent-soft: #ece6ff;
+	--gold: #d9a400;
+	--silver: #8a94a6;
+	--bronze: #b8723a;
+	--bar: #6d4aff;
+}
+@media (prefers-color-scheme: dark) {
+	:root:not([data-theme="light"]) {
+		--bg: #0f0d18;
+		--panel: #1a1726;
+		--text: #f1eefb;
+		--muted: #9a94b3;
+		--line: #2c2840;
+		--accent: #9d85ff;
+		--accent-soft: #2a2347;
+		--gold: #ffcf3d;
+		--silver: #c3cad6;
+		--bronze: #e09a5c;
+		--bar: #9d85ff;
+	}
+}
+* { box-sizing: border-box; }
+body {
+	margin: 0;
+	background: var(--bg);
+	color: var(--text);
+	font-family: "Space Grotesk", system-ui, sans-serif;
+	line-height: 1.45;
+}
+main { max-width: 860px; margin: 0 auto; padding: 32px 16px 64px; }
+header h1 { font-size: clamp(1.8rem, 5vw, 2.6rem); margin: 0 0 4px; letter-spacing: -0.02em; }
+header p { margin: 0; color: var(--muted); }
+.tabs { display: flex; flex-wrap: wrap; gap: 8px; margin: 28px 0 16px; }
+.tabs button {
+	font: inherit; font-weight: 600;
+	border: 1px solid var(--line); background: var(--panel); color: var(--text);
+	padding: 8px 14px; border-radius: 999px; cursor: pointer;
+}
+.tabs button[aria-selected="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; overflow: hidden; }
+.panel h2 { font-size: 1rem; margin: 0; padding: 16px 18px 4px; }
+.panel .sub { margin: 0; padding: 0 18px 12px; color: var(--muted); font-size: 0.9rem; }
+table { width: 100%; border-collapse: collapse; }
+th, td { padding: 10px 18px; text-align: left; border-top: 1px solid var(--line); }
+th { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); font-weight: 600; }
+td.num, th.num { text-align: right; font-family: "JetBrains Mono", monospace; white-space: nowrap; }
+td.rank { width: 48px; font-weight: 700; }
+.medal { display: inline-grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; color: #1d1a2b; font-size: 0.85rem; }
+.m1 { background: var(--gold); } .m2 { background: var(--silver); } .m3 { background: var(--bronze); }
+.name { font-weight: 600; }
+.bar { height: 6px; border-radius: 3px; background: var(--accent-soft); margin-top: 6px; }
+.bar > span { display: block; height: 100%; border-radius: 3px; background: var(--bar); }
+.tag { font-size: 0.75rem; color: var(--muted); font-weight: 400; margin-left: 6px; }
+.empty { padding: 28px 18px; color: var(--muted); text-align: center; }
+.hide-sm { }
+@media (max-width: 560px) {
+	.hide-sm { display: none; }
+	th, td { padding: 10px 10px; }
+}
+details { margin-top: 28px; background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 14px 18px; }
+summary { cursor: pointer; font-weight: 600; }
+details p, details li { color: var(--muted); font-size: 0.92rem; }
+.drop {
+	margin-top: 12px; border: 2px dashed var(--line); border-radius: 12px; padding: 20px; text-align: center; color: var(--muted);
+}
+.drop.over { border-color: var(--accent); background: var(--accent-soft); }
+label { display: block; font-size: 0.9rem; margin-top: 12px; }
+input[type="text"] {
+	font: inherit; width: 100%; max-width: 320px; margin-top: 4px; padding: 8px 10px;
+	border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--text);
+}
+textarea {
+	width: 100%; min-height: 110px; margin-top: 8px; padding: 10px;
+	font-family: "JetBrains Mono", monospace; font-size: 0.8rem;
+	border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--text);
+}
+.btn { font: inherit; font-weight: 600; margin-top: 8px; padding: 8px 14px; border-radius: 8px; border: 0; background: var(--accent); color: #fff; cursor: pointer; }
+footer { margin-top: 32px; color: var(--muted); font-size: 0.85rem; }
+</style>
+</head>
+<body>
+<main>
+	<header>
+		<h1>Low-Fi VR Leaderboard</h1>
+		<p>Who points fastest <em>and</em> most accurately? Scores are Fitts' throughput in bits per second. Higher is better.</p>
+	</header>
+
+	<nav class="tabs" role="tablist" id="tabs"></nav>
+	<section class="panel" id="board"><div class="empty">Loading scores…</div></section>
+
+	<details>
+		<summary>How is the score worked out?</summary>
+		<p><strong>Throughput (TP)</strong> combines speed and accuracy into one number (ISO 9241-9): how many bits of
+		target information you get through per second. Rushing and landing off-centre doesn't help, because scattered
+		selections make the targets count as smaller.</p>
+		<ul>
+			<li><strong>Per technique:</strong> your mean throughput over every target ring in that technique.</li>
+			<li><strong>Overall:</strong> your mean throughput across the techniques. People who finished all of them are ranked first.</li>
+			<li><strong>Time</strong> is the mean movement time per selection; <strong>timeouts</strong> are selections that hit the time limit.</li>
+		</ul>
+	</details>
+
+	<details id="adder">
+		<summary>Experimenter: add a participant</summary>
+		<p>Drop the participant's <code>ID-xxxx-summary.csv</code> here. It is read in your browser only, nothing is uploaded.
+		Then paste the generated lines at the end of <code>scores.csv</code> in the repository and commit.</p>
+		<label>Name shown on the board
+			<input type="text" id="nick" placeholder="e.g. Speedy Pointer (leave blank for the participant ID)">
+		</label>
+		<div class="drop" id="drop">Drop summary CSV here, or <input type="file" id="file" accept=".csv"></div>
+		<textarea id="out" readonly placeholder="Generated scores.csv lines appear here"></textarea>
+		<button class="btn" id="copy" type="button">Copy lines</button>
+		<p id="note"></p>
+	</details>
+
+	<footer>FIT3144 · Interaction in Low-Fi VR · Gaze + Dwell, Hand Ray and Hand Touch</footer>
+</main>
+
+<script>
+// Display names for the app's condition codes, in tab order. Unknown codes
+// found in scores.csv still get a tab, labelled with the raw code.
+const CONDITIONS = { GazeDwell: "Gaze + Dwell", HandRay: "Hand Ray", HandTouch: "Hand Touch", FistRay: "Fist Ray" };
+
+let rows = [];
+let active = "overall";
+
+function parseCsv(text) {
+	const lines = text.replace(/\r/g, "").split("\n").filter(l => l.trim() !== "");
+	if (lines.length === 0) return [];
+	const header = lines[0].split(",").map(h => h.trim());
+	return lines.slice(1).map(line => {
+		const cells = line.split(",");
+		const row = {};
+		header.forEach((h, i) => row[h] = (cells[i] ?? "").trim());
+		return row;
+	});
+}
+
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const conditionLabel = c => CONDITIONS[c] ?? c;
+const mean = xs => xs.reduce((a, b) => a + b, 0) / xs.length;
+
+function conditionsPresent() {
+	const seen = [...new Set(rows.map(r => r.condition))];
+	const known = Object.keys(CONDITIONS).filter(c => seen.includes(c));
+	return known.concat(seen.filter(c => !(c in CONDITIONS)));
+}
+
+// One entry per name+condition: a later line replaces an earlier one, so a
+// corrected result can simply be appended.
+function latestByName(condition) {
+	const byName = new Map();
+	for (const r of rows) if (r.condition === condition) byName.set(r.name, r);
+	return [...byName.values()].map(r => ({
+		name: r.name, tp: +r.tp, mt: +r.mt_ms, err: +r.error_pct,
+	})).filter(r => isFinite(r.tp));
+}
+
+function renderTabs() {
+	const tabs = [["overall", "Overall"], ...conditionsPresent().map(c => [c, conditionLabel(c)])];
+	const nav = document.getElementById("tabs");
+	nav.innerHTML = tabs.map(([id, label]) =>
+		`<button role="tab" data-id="${esc(id)}" aria-selected="${id === active}">${esc(label)}</button>`).join("");
+	nav.querySelectorAll("button").forEach(b => b.onclick = () => { active = b.dataset.id; render(); });
+}
+
+function rankCell(i) {
+	return i < 3 ? `<span class="medal m${i + 1}">${i + 1}</span>` : i + 1;
+}
+
+function barCell(value, best) {
+	return `<div class="bar"><span style="width:${best > 0 ? (100 * value / best).toFixed(1) : 0}%"></span></div>`;
+}
+
+function renderCondition(condition) {
+	const list = latestByName(condition).sort((a, b) => b.tp - a.tp);
+	if (list.length === 0) return `<div class="empty">No ${esc(conditionLabel(condition))} results yet.</div>`;
+	const best = list[0].tp;
+	return `<h2>${esc(conditionLabel(condition))}</h2><p class="sub">${list.length} participant${list.length === 1 ? "" : "s"}</p>
+	<table><thead><tr><th>#</th><th>Name</th><th class="num">TP (bits/s)</th><th class="num hide-sm">Time (ms)</th><th class="num hide-sm">Timeouts</th></tr></thead><tbody>
+	${list.map((r, i) => `<tr><td class="rank">${rankCell(i)}</td><td><span class="name">${esc(r.name)}</span>${barCell(r.tp, best)}</td>
+		<td class="num">${r.tp.toFixed(2)}</td><td class="num hide-sm">${isFinite(r.mt) ? Math.round(r.mt) : "–"}</td>
+		<td class="num hide-sm">${isFinite(r.err) ? r.err.toFixed(0) + "%" : "–"}</td></tr>`).join("")}
+	</tbody></table>`;
+}
+
+function renderOverall() {
+	const conds = conditionsPresent();
+	const people = new Map();
+	for (const c of conds) for (const r of latestByName(c)) {
+		if (!people.has(r.name)) people.set(r.name, {});
+		people.get(r.name)[c] = r.tp;
+	}
+	if (people.size === 0) return `<div class="empty">No results yet. Be the first!</div>`;
+	const list = [...people.entries()].map(([name, scores]) => ({
+		name, scores, done: Object.keys(scores).length, tp: mean(Object.values(scores)),
+	})).sort((a, b) => (b.done === conds.length) - (a.done === conds.length) || b.tp - a.tp);
+	const best = Math.max(...list.map(p => p.tp));
+	return `<h2>Overall</h2><p class="sub">Mean throughput across ${conds.length} technique${conds.length === 1 ? "" : "s"}</p>
+	<table><thead><tr><th>#</th><th>Name</th><th class="num">Mean TP</th>
+	${conds.map(c => `<th class="num hide-sm">${esc(conditionLabel(c))}</th>`).join("")}</tr></thead><tbody>
+	${list.map((p, i) => `<tr><td class="rank">${rankCell(i)}</td><td><span class="name">${esc(p.name)}</span>
+		${p.done < conds.length ? `<span class="tag">${p.done}/${conds.length} done</span>` : ""}${barCell(p.tp, best)}</td>
+		<td class="num">${p.tp.toFixed(2)}</td>
+		${conds.map(c => `<td class="num hide-sm">${c in p.scores ? p.scores[c].toFixed(2) : "–"}</td>`).join("")}</tr>`).join("")}
+	</tbody></table>`;
+}
+
+function render() {
+	renderTabs();
+	document.getElementById("board").innerHTML = active === "overall" ? renderOverall() : renderCondition(active);
+}
+
+fetch("scores.csv", { cache: "no-cache" })
+	.then(r => { if (!r.ok) throw new Error(r.status); return r.text(); })
+	.then(text => { rows = parseCsv(text); render(); })
+	.catch(() => {
+		document.getElementById("board").innerHTML =
+			`<div class="empty">Couldn't load scores.csv. (Opening the file directly? Serve the folder instead, e.g. <code>python -m http.server</code>.)</div>`;
+	});
+
+// ---- Experimenter helper: summary CSV -> scores.csv lines ----
+// Uses the app's summary file (one row per target ring). Per condition it
+// takes the block with the most rings, the latest on a tie (Block codes are
+// timestamps), and averages TP and MT over its rings.
+function summaryToLines(text, nick) {
+	const data = parseCsv(text);
+	if (data.length === 0 || !("TP" in data[0]) || !("Condition" in data[0])) {
+		throw new Error("That doesn't look like an ID-xxxx-summary.csv file.");
+	}
+	const blocks = new Map();
+	for (const r of data) {
+		const key = r.Condition + "|" + r.Block;
+		if (!blocks.has(key)) blocks.set(key, []);
+		blocks.get(key).push(r);
+	}
+	const chosen = new Map();
+	for (const [key, list] of blocks) {
+		const [cond, block] = key.split("|");
+		const cur = chosen.get(cond);
+		if (!cur || list.length > cur.list.length || (list.length === cur.list.length && block > cur.block)) {
+			chosen.set(cond, { block, list });
+		}
+	}
+	const name = (nick || "Participant " + data[0].Participant).replace(/,/g, " ").trim();
+	const notes = [];
+	const lines = [...chosen.entries()].map(([cond, { block, list }]) => {
+		const trials = list.reduce((a, r) => a + (+r.Trials || 0), 0);
+		const timeouts = list.reduce((a, r) => a + (+r.Timeouts || 0), 0);
+		const date = block.slice(1, 9);
+		notes.push(`${conditionLabel(cond)}: ${list.length} rings${block.includes("PILOT") ? " (pilot)" : ""}`);
+		return [name, cond, mean(list.map(r => +r.TP)).toFixed(3), mean(list.map(r => +r.MT)).toFixed(0),
+			trials > 0 ? (100 * timeouts / trials).toFixed(1) : "0", date].join(",");
+	});
+	return { lines, notes };
+}
+
+function handleFile(file) {
+	const reader = new FileReader();
+	reader.onload = () => {
+		try {
+			const { lines, notes } = summaryToLines(reader.result, document.getElementById("nick").value);
+			document.getElementById("out").value = lines.join("\n");
+			document.getElementById("note").textContent = notes.join(" · ");
+		} catch (e) {
+			document.getElementById("out").value = "";
+			document.getElementById("note").textContent = e.message;
+		}
+	};
+	reader.readAsText(file);
+}
+
+const drop = document.getElementById("drop");
+drop.addEventListener("dragover", e => { e.preventDefault(); drop.classList.add("over"); });
+drop.addEventListener("dragleave", () => drop.classList.remove("over"));
+drop.addEventListener("drop", e => {
+	e.preventDefault(); drop.classList.remove("over");
+	if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+});
+document.getElementById("file").addEventListener("change", e => { if (e.target.files[0]) handleFile(e.target.files[0]); });
+document.getElementById("copy").addEventListener("click", () => {
+	const out = document.getElementById("out");
+	navigator.clipboard?.writeText(out.value).catch(() => { out.select(); document.execCommand("copy"); });
+});
+</script>
+</body>
+</html>
