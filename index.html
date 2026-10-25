@@ -76,21 +76,6 @@ td.rank { width: 48px; font-weight: 700; }
 details { margin-top: 28px; background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 14px 18px; }
 summary { cursor: pointer; font-weight: 600; }
 details p, details li { color: var(--muted); font-size: 0.92rem; }
-.drop {
-	margin-top: 12px; border: 2px dashed var(--line); border-radius: 12px; padding: 20px; text-align: center; color: var(--muted);
-}
-.drop.over { border-color: var(--accent); background: var(--accent-soft); }
-label { display: block; font-size: 0.9rem; margin-top: 12px; }
-input[type="text"] {
-	font: inherit; width: 100%; max-width: 320px; margin-top: 4px; padding: 8px 10px;
-	border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--text);
-}
-textarea {
-	width: 100%; min-height: 110px; margin-top: 8px; padding: 10px;
-	font-family: "JetBrains Mono", monospace; font-size: 0.8rem;
-	border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--text);
-}
-.btn { font: inherit; font-weight: 600; margin-top: 8px; padding: 8px 14px; border-radius: 8px; border: 0; background: var(--accent); color: #fff; cursor: pointer; }
 footer { margin-top: 32px; color: var(--muted); font-size: 0.85rem; }
 </style>
 </head>
@@ -116,18 +101,6 @@ footer { margin-top: 32px; color: var(--muted); font-size: 0.85rem; }
 		</ul>
 	</details>
 
-	<details id="adder">
-		<summary>Experimenter: add a participant</summary>
-		<p>Drop the participant's <code>ID-xxxx-summary.csv</code> here. It is read in your browser only, nothing is uploaded.
-		Then paste the generated lines at the end of <code>scores.csv</code> in the repository and commit.</p>
-		<label>Name shown on the board
-			<input type="text" id="nick" placeholder="e.g. Speedy Pointer (leave blank for the participant ID)">
-		</label>
-		<div class="drop" id="drop">Drop summary CSV here, or <input type="file" id="file" accept=".csv"></div>
-		<textarea id="out" readonly placeholder="Generated scores.csv lines appear here"></textarea>
-		<button class="btn" id="copy" type="button">Copy lines</button>
-		<p id="note"></p>
-	</details>
 
 	<footer>FIT3144 · Interaction in Low-Fi VR · Gaze + Dwell, Hand Ray and Hand Touch</footer>
 </main>
@@ -235,69 +208,6 @@ fetch("scores.csv", { cache: "no-cache" })
 			`<div class="empty">Couldn't load scores.csv. (Opening the file directly? Serve the folder instead, e.g. <code>python -m http.server</code>.)</div>`;
 	});
 
-// ---- Experimenter helper: summary CSV -> scores.csv lines ----
-// Uses the app's summary file (one row per target ring). Per condition it
-// takes the block with the most rings, the latest on a tie (Block codes are
-// timestamps), and averages TP and MT over its rings.
-function summaryToLines(text, nick) {
-	const data = parseCsv(text);
-	if (data.length === 0 || !("TP" in data[0]) || !("Condition" in data[0])) {
-		throw new Error("That doesn't look like an ID-xxxx-summary.csv file.");
-	}
-	const blocks = new Map();
-	for (const r of data) {
-		const key = r.Condition + "|" + r.Block;
-		if (!blocks.has(key)) blocks.set(key, []);
-		blocks.get(key).push(r);
-	}
-	const chosen = new Map();
-	for (const [key, list] of blocks) {
-		const [cond, block] = key.split("|");
-		const cur = chosen.get(cond);
-		if (!cur || list.length > cur.list.length || (list.length === cur.list.length && block > cur.block)) {
-			chosen.set(cond, { block, list });
-		}
-	}
-	const name = (nick || "Participant " + data[0].Participant).replace(/,/g, " ").trim();
-	const notes = [];
-	const lines = [...chosen.entries()].map(([cond, { block, list }]) => {
-		const trials = list.reduce((a, r) => a + (+r.Trials || 0), 0);
-		const timeouts = list.reduce((a, r) => a + (+r.Timeouts || 0), 0);
-		const date = block.slice(1, 9);
-		notes.push(`${conditionLabel(cond)}: ${list.length} rings${block.includes("PILOT") ? " (pilot)" : ""}`);
-		return [name, cond, mean(list.map(r => +r.TP)).toFixed(3), mean(list.map(r => +r.MT)).toFixed(0),
-			trials > 0 ? (100 * timeouts / trials).toFixed(1) : "0", date].join(",");
-	});
-	return { lines, notes };
-}
-
-function handleFile(file) {
-	const reader = new FileReader();
-	reader.onload = () => {
-		try {
-			const { lines, notes } = summaryToLines(reader.result, document.getElementById("nick").value);
-			document.getElementById("out").value = lines.join("\n");
-			document.getElementById("note").textContent = notes.join(" · ");
-		} catch (e) {
-			document.getElementById("out").value = "";
-			document.getElementById("note").textContent = e.message;
-		}
-	};
-	reader.readAsText(file);
-}
-
-const drop = document.getElementById("drop");
-drop.addEventListener("dragover", e => { e.preventDefault(); drop.classList.add("over"); });
-drop.addEventListener("dragleave", () => drop.classList.remove("over"));
-drop.addEventListener("drop", e => {
-	e.preventDefault(); drop.classList.remove("over");
-	if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
-});
-document.getElementById("file").addEventListener("change", e => { if (e.target.files[0]) handleFile(e.target.files[0]); });
-document.getElementById("copy").addEventListener("click", () => {
-	const out = document.getElementById("out");
-	navigator.clipboard?.writeText(out.value).catch(() => { out.select(); document.execCommand("copy"); });
-});
 </script>
 </body>
 </html>
