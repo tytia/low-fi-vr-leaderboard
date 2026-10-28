@@ -2,3 +2,6 @@ name,condition,tp,mt_ms,error_pct,date
 ynfn,HandTouch,0.876,4949,1.2,20261028
 ynfn,HandRay,0.915,4526,0.0,20261028
 ynfn,GazeDwell,2.350,1844,0.0,20261028
+TiaNT,GazeDwell,2.414,1673,0.0,20261028
+TiaNT,HandRay,1.119,3948,0.0,20261028
+TiaNT,HandTouch,0.966,4265,0.0,20261029
